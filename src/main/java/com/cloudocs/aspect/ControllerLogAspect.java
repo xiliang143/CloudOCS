@@ -63,11 +63,11 @@ public class ControllerLogAspect {
         String params = getParams(args);
 
         // 打印请求日志
-        log.info("=== API Call ===");
-        log.info("URL: {} {}", requestMethod, requestUri);
-        log.info("Controller: {}.{}", className, methodName);
-        log.info("User: {}, Tenant: {}", userId, tenantId);
-        log.info("Params: {}", params);
+        log.info("=== 接口调用 ===");
+        log.info("请求方式: {}，请求路径: {}", requestMethod, requestUri);
+        log.info("控制器: {}.{}", className, methodName);
+        log.info("用户ID: {}，租户ID: {}", userId, tenantId);
+        log.info("参数: {}", params);
 
         Object result = null;
         Throwable error = null;
@@ -83,17 +83,17 @@ public class ControllerLogAspect {
             long costTime = System.currentTimeMillis() - startTime;
 
             if (error != null) {
-                log.error("=== API Error ===");
-                log.error("URL: {} {}", requestMethod, requestUri);
-                log.error("Controller: {}.{}", className, methodName);
-                log.error("Cost: {}ms, Error: {}", costTime, error.getMessage());
+                log.error("=== 接口异常 ===");
+                log.error("请求方式: {}，请求路径: {}", requestMethod, requestUri);
+                log.error("控制器: {}.{}", className, methodName);
+                log.error("耗时: {}ms，错误: {}", costTime, error.getMessage());
             } else {
-                log.info("=== API Success ===");
-                log.info("URL: {} {}", requestMethod, requestUri);
-                log.info("Controller: {}.{}", className, methodName);
-                log.info("Cost: {}ms", costTime);
+                log.info("=== 接口成功 ===");
+                log.info("请求方式: {}，请求路径: {}", requestMethod, requestUri);
+                log.info("控制器: {}.{}", className, methodName);
+                log.info("耗时: {}ms", costTime);
             }
-            log.info("================");
+            log.info("==================");
         }
     }
 

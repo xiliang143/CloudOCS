@@ -18,6 +18,10 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
     @Override
     @Transactional
     public void createDocument(Document document) {
+        // 设置默认值
+        if (document.getTitle() == null || document.getTitle().trim().isEmpty()) {
+            document.setTitle("未命名文档");
+        }
         document.setCreatorId(UserContext.getUserId());
         if (document.getCreatorName() == null) {
             document.setCreatorName(UserContext.getUser() != null ? UserContext.getUser().getNickname() : null);
