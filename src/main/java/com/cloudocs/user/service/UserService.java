@@ -9,14 +9,14 @@ import java.util.List;
 public interface UserService extends IService<User> {
 
     /**
-     * 用户注册（需指定租户）
+     * 用户注册
      */
     void register(User user);
 
     /**
      * 用户登录，返回JWT token
      */
-    String login(String username, String password, Long tenantId);
+    String login(String username, String password);
 
     /**
      * 根据ID获取
@@ -24,9 +24,9 @@ public interface UserService extends IService<User> {
     User getUserById(Long id);
 
     /**
-     * 根据用户名和租户获取
+     * 根据用户名获取
      */
-    User getUserByUsername(String username, Long tenantId);
+    User getUserByUsername(String username);
 
     /**
      * 更新用户
@@ -39,9 +39,9 @@ public interface UserService extends IService<User> {
     void deleteUser(Long id);
 
     /**
-     * 获取租户下所有用户（分页）
+     * 获取所有用户（分页）
      */
-    Page<User> listUsers(Long tenantId, Integer page, Integer size);
+    Page<User> listUsers(Integer page, Integer size);
 
     /**
      * 修改密码
@@ -49,9 +49,9 @@ public interface UserService extends IService<User> {
     void changePassword(Long userId, String oldPassword, String newPassword);
 
     /**
-     * 获取当前租户下所有用户
+     * 获取所有用户
      */
-    List<User> getUsersByTenant();
+    List<User> getAllUsers();
 
     /**
      * 邀请用户（创建新用户）
@@ -67,4 +67,19 @@ public interface UserService extends IService<User> {
      * 禁用用户
      */
     void disableUser(Long id);
+
+    /**
+     * 根据手机号获取用户
+     */
+    User getByPhone(String phone);
+
+    /**
+     * 根据用户ID登录（内部使用）
+     */
+    String loginByUserId(Long userId);
+
+    /**
+     * 重置密码
+     */
+    void resetPassword(Long userId, String newPassword);
 }

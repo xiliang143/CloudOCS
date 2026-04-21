@@ -6,9 +6,6 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
-import com.cloudocs.interceptor.TenantInterceptor;
-import com.cloudocs.tenant.TenantContextHolder;
 import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,9 +21,6 @@ public class MybatisPlusConfig {
 
         // 分页插件
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
-
-        // 租户拦截器
-        interceptor.addInnerInterceptor(new TenantLineInnerInterceptor(new TenantInterceptor()));
 
         // 乐观锁插件
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
@@ -44,7 +38,6 @@ public class MybatisPlusConfig {
             public void insertFill(MetaObject metaObject) {
                 this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, LocalDateTime.now());
                 this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
-                this.strictInsertFill(metaObject, "tenantId", Long.class, TenantContextHolder.getTenantId());
             }
 
             @Override

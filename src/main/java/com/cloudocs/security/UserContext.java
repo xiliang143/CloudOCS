@@ -22,11 +22,6 @@ public class UserContext {
         return user != null ? user.getId() : null;
     }
 
-    public static Long getTenantId() {
-        User user = CURRENT_USER.get();
-        return user != null ? user.getTenantId() : null;
-    }
-
     public static Integer getRole() {
         User user = CURRENT_USER.get();
         return user != null ? user.getRole() : null;

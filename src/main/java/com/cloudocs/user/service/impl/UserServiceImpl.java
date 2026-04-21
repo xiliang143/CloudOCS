@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudocs.security.JwtUtils;
 import com.cloudocs.security.UserContext;
-import com.cloudocs.tenant.TenantContextHolder;
 import com.cloudocs.user.entity.User;
 import com.cloudocs.user.mapper.UserMapper;
 import com.cloudocs.user.service.UserService;
@@ -30,8 +29,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Transactional
     public void register(User user) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, user.getUsername())
-               .eq(User::getTenantId, user.getTenantId());
+        wrapper.eq(User::getUsername, user.getUsername());
         if (this.count(wrapper) > 0) {
             throw new IllegalArgumentException("用户名已存在");
         }
@@ -41,31 +39,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public String login(String username, String password, Long tenantId) {
-        // 设置租户上下文，让查询使用正确的 tenantId
-        TenantContextHolder.setTenantId(tenantId);
-        try {
-            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(User::getUsername, username)
-                   .eq(User::getTenantId, tenantId);
-            User user = this.getOne(wrapper);
+    public String login(String username, String password) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getUsername, username);
+        User user = this.getOne(wrapper);
 
-            if (user == null) {
-                throw new IllegalArgumentException("用户不存在");
-            }
-
-            if (user.getStatus() == 0) {
-                throw new IllegalArgumentException("用户已被禁用");
-            }
-
-            if (!passwordEncoder.matches(password, user.getPassword())) {
-                throw new IllegalArgumentException("密码错误");
-            }
-
-            return jwtUtils.generateToken(user.getId(), tenantId, user.getRole());
-        } finally {
-            TenantContextHolder.clear();
+        if (user == null) {
+            throw new IllegalArgumentException("用户不存在");
         }
+
+        if (user.getStatus() == 0) {
+            throw new IllegalArgumentException("用户已被禁用");
+        }
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new IllegalArgumentException("密码错误");
+        }
+
+        return jwtUtils.generateToken(user.getId(), user.getRole());
     }
 
     @Override
@@ -74,10 +65,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public User getUserByUsername(String username, Long tenantId) {
+    public User getUserByUsername(String username) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, username)
-               .eq(User::getTenantId, tenantId);
+        wrapper.eq(User::getUsername, username);
         return this.getOne(wrapper);
     }
 
@@ -102,11 +92,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public Page<User> listUsers(Long tenantId, Integer page, Integer size) {
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getTenantId, tenantId);
+    public Page<User> listUsers(Integer page, Integer size) {
         Page<User> pager = new Page<>(page, size);
-        return this.page(pager, wrapper);
+        return this.page(pager);
     }
 
     @Override
@@ -126,24 +114,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public List<User> getUsersByTenant() {
-        Long tenantId = TenantContextHolder.getTenantId();
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getTenantId, tenantId);
-        return this.list(wrapper);
+    public List<User> getAllUsers() {
+        return this.list();
     }
 
     @Override
     @Transactional
     public void inviteUser(User user) {
-        Long tenantId = TenantContextHolder.getTenantId();
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, user.getUsername())
-               .eq(User::getTenantId, tenantId);
+        wrapper.eq(User::getUsername, user.getUsername());
         if (this.count(wrapper) > 0) {
             throw new IllegalArgumentException("用户名已存在");
         }
-        user.setTenantId(tenantId);
         user.setPassword(passwordEncoder.encode("123456")); // 默认密码
         user.setStatus(1);
         this.save(user);
@@ -168,6 +150,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new IllegalArgumentException("用户不存在");
         }
         user.setStatus(0);
+        this.updateById(user);
+    }
+
+    @Override
+    public User getByPhone(String phone) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getPhone, phone);
+        return this.getOne(wrapper);
+    }
+
+    @Override
+    public String loginByUserId(Long userId) {
+        User user = this.getById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+        return jwtUtils.generateToken(user.getId(), user.getRole());
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(Long userId, String newPassword) {
+        User user = this.getById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
         this.updateById(user);
     }
 }

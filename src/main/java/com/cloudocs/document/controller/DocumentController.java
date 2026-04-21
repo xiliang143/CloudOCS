@@ -29,9 +29,9 @@ public class DocumentController {
 
     @PostMapping
     @Operation(summary = "创建文档")
-    public Result<Void> createDocument(@RequestBody Document document) {
-        documentService.createDocument(document);
-        return Result.success();
+    public Result<Document> createDocument(@RequestBody Document document) {
+        Document created = documentService.createDocument(document);
+        return Result.success(created);
     }
 
     @PutMapping("/{id}")
@@ -78,23 +78,24 @@ public class DocumentController {
 
     @GetMapping("/list")
     @Operation(summary = "文档列表")
-    public Result<List<Document>> listDocuments(@RequestParam(required = false) Long parentId) {
-        if (parentId == null) {
-            parentId = 0L;
+    public Result<List<Document>> listDocuments(@RequestParam(required = false) Long folderId) {
+        if (folderId == null) {
+            folderId = 0L;
         }
-        return Result.success(documentService.getDocumentsByFolderId(parentId));
-    }
-
-    @GetMapping("/tree")
-    @Operation(summary = "文档树")
-    public Result<List<Document>> getDocumentTree() {
-        return Result.success(documentService.getDocumentTree());
+        return Result.success(documentService.getDocumentsByFolderId(folderId));
     }
 
     @GetMapping("/deleted")
     @Operation(summary = "回收站列表")
     public Result<List<Document>> getDeletedDocuments() {
         return Result.success(documentService.getDeletedDocuments());
+    }
+
+    @DeleteMapping("/deleted/all")
+    @Operation(summary = "清空回收站")
+    public Result<Void> emptyTrash() {
+        documentService.emptyTrash();
+        return Result.success();
     }
 
     // ========== 版本管理 ==========
@@ -141,5 +142,61 @@ public class DocumentController {
     @Operation(summary = "获取文档的所有分享")
     public Result<List<com.cloudocs.document.share.entity.Share>> getShares(@RequestParam Long documentId) {
         return Result.success(shareService.getSharesByDocumentId(documentId));
+    }
+
+    // ========== 邮箱功能 ==========
+
+    @GetMapping("/emails")
+    @Operation(summary = "获取邮件列表")
+    public Result<List<Document>> getEmails(@RequestParam String type) {
+        return Result.success(documentService.getEmailsByType(type));
+    }
+
+    @PutMapping("/{id}/priority")
+    @Operation(summary = "设置优先级")
+    public Result<Void> setPriority(@PathVariable Long id, @RequestParam Integer priority) {
+        documentService.setPriority(id, priority);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/star")
+    @Operation(summary = "设置星标")
+    public Result<Void> setStar(@PathVariable Long id, @RequestParam Integer starred) {
+        documentService.setStar(id, starred);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/tags")
+    @Operation(summary = "设置标签")
+    public Result<Void> setTags(@PathVariable Long id, @RequestParam String tags) {
+        documentService.setTags(id, tags);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/read")
+    @Operation(summary = "标记已读/未读")
+    public Result<Void> markRead(@PathVariable Long id, @RequestParam(required = false) Integer isRead) {
+        documentService.markRead(id, isRead);
+        return Result.success();
+    }
+
+    @PostMapping("/{id}/send")
+    @Operation(summary = "发送邮件")
+    public Result<Void> sendEmail(@PathVariable Long id) {
+        documentService.sendEmail(id);
+        return Result.success();
+    }
+
+    @GetMapping("/inbox/unread-count")
+    @Operation(summary = "获取未读邮件数")
+    public Result<Integer> getUnreadCount() {
+        return Result.success(documentService.getUnreadCount());
+    }
+
+    @PostMapping("/send")
+    @Operation(summary = "发送新邮件")
+    public Result<Document> sendNewEmail(@RequestBody Document document) {
+        Document created = documentService.createEmail(document);
+        return Result.success(created);
     }
 }

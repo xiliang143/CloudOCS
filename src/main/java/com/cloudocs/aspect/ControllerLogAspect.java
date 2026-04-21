@@ -52,11 +52,6 @@ public class ControllerLogAspect {
 
         // 获取用户信息
         Long userId = UserContext.getUserId();
-        Long tenantId = null;
-        try {
-            tenantId = com.cloudocs.tenant.TenantContextHolder.getTenantId();
-        } catch (Exception ignored) {
-        }
 
         // 获取参数
         Object[] args = joinPoint.getArgs();
@@ -66,7 +61,7 @@ public class ControllerLogAspect {
         log.info("=== 接口调用 ===");
         log.info("请求方式: {}，请求路径: {}", requestMethod, requestUri);
         log.info("控制器: {}.{}", className, methodName);
-        log.info("用户ID: {}，租户ID: {}", userId, tenantId);
+        log.info("用户ID: {}", userId);
         log.info("参数: {}", params);
 
         Object result = null;

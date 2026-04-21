@@ -36,3 +36,8 @@ knife4j:
 jwt:
   secret: clouddocs-secret-key-for-jwt-token-generation-must-be-at-least-256-bits
   expiration: 86400000
+
+ai:
+  api-key: sk-api--cTJmPKLIbvc2J3jL1a-KvlWlmm4zdHmrDDf2Bc1FKsFi-N0vuRQ1z1mAP_5T9tyf4VGLupfZx1D-PNTcVSu9-9ameCDfcxMZsdogf72IhEUr7U7JvvldY4
+  api-url: https://api.minimax.chat/v1/text/chatcompletion_v2
+  default-model: MiniMax-Text-01

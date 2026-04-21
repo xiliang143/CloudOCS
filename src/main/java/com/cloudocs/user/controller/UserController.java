@@ -24,7 +24,7 @@ public class UserController {
     @GetMapping
     @Operation(summary = "用户列表")
     public Result<List<User>> listUsers() {
-        return Result.success(userService.getUsersByTenant());
+        return Result.success(userService.getAllUsers());
     }
 
     @PostMapping("/invite")

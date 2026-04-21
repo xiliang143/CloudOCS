@@ -9,7 +9,6 @@ import com.cloudocs.security.UserContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -17,20 +16,21 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
 
     @Override
     @Transactional
-    public void createDocument(Document document) {
+    public Document createDocument(Document document) {
         // 设置默认值
         if (document.getTitle() == null || document.getTitle().trim().isEmpty()) {
             document.setTitle("未命名文档");
+        }
+        if (document.getFolderId() == null) {
+            document.setFolderId(0L);
         }
         document.setCreatorId(UserContext.getUserId());
         if (document.getCreatorName() == null) {
             document.setCreatorName(UserContext.getUser() != null ? UserContext.getUser().getNickname() : null);
         }
-        document.setIsDeleted(0);
-        if (document.getParentId() == null) {
-            document.setParentId(0L);
-        }
+        document.setDeleted(0);
         this.save(document);
+        return document;
     }
 
     @Override
@@ -43,7 +43,20 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         if (existing == null) {
             throw new IllegalArgumentException("文档不存在");
         }
-        this.updateById(document);
+        // 使用 UpdateWrapper 只更新必要的字段，避免 null 覆盖
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Document> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", document.getId());
+        if (document.getTitle() != null) {
+            wrapper.set("title", document.getTitle());
+        }
+        if (document.getContent() != null) {
+            wrapper.set("content", document.getContent());
+        }
+        if (document.getFolderId() != null) {
+            wrapper.set("folder_id", document.getFolderId());
+        }
+        this.update(wrapper);
     }
 
     @Override
@@ -53,8 +66,11 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         if (document == null) {
             throw new IllegalArgumentException("文档不存在");
         }
-        document.setIsDeleted(1);
-        this.updateById(document);
+        // 使用 UpdateWrapper 只更新 deleted 字段
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Document> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", id).set("deleted", 1);
+        this.update(wrapper);
     }
 
     @Override
@@ -72,8 +88,11 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         if (document == null) {
             throw new IllegalArgumentException("文档不存在");
         }
-        document.setIsDeleted(0);
-        this.updateById(document);
+        // 使用 UpdateWrapper 只更新 deleted 字段
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Document> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", id).set("deleted", 0);
+        this.update(wrapper);
     }
 
     @Override
@@ -82,19 +101,12 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
     }
 
     @Override
-    public List<Document> getDocumentsByFolderId(Long parentId) {
+    public List<Document> getDocumentsByFolderId(Long folderId) {
         LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Document::getParentId, parentId)
-               .eq(Document::getIsDeleted, 0)
-               .orderByAsc(Document::getType)
+        wrapper.eq(Document::getFolderId, folderId)
+               .eq(Document::getDeleted, 0)
                .orderByAsc(Document::getId);
         return this.list(wrapper);
-    }
-
-    @Override
-    public List<Document> getDocumentTree() {
-        // 获取根目录下的所有顶级文档（排除已删除的）
-        return getDocumentsByFolderId(0L);
     }
 
     @Override
@@ -104,33 +116,142 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         if (document == null) {
             throw new IllegalArgumentException("文档不存在");
         }
-        document.setParentId(targetFolderId);
-        this.updateById(document);
+        // 使用 UpdateWrapper 只更新 folder_id 字段
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Document> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", id).set("folder_id", targetFolderId);
+        this.update(wrapper);
     }
 
     @Override
     public List<Document> getDeletedDocuments() {
         LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Document::getIsDeleted, 1)
+        wrapper.eq(Document::getDeleted, 1)
                .orderByDesc(Document::getUpdatedAt);
         return this.list(wrapper);
     }
 
-    /**
-     * 递归获取树形结构（内部使用）
-     */
-    private List<Document> getTreeRecursive(Long parentId) {
-        List<Document> result = new ArrayList<>();
-        List<Document> children = getDocumentsByFolderId(parentId);
+    @Override
+    @Transactional
+    public void emptyTrash() {
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Document::getDeleted, 1);
+        this.remove(wrapper);
+    }
 
-        for (Document child : children) {
-            result.add(child);
-            if (child.getType() != null && child.getType() == 1) {
-                // 文件夹类型，递归获取子节点
-                List<Document> grandchildren = getTreeRecursive(child.getId());
-                result.addAll(grandchildren);
-            }
+    // ========== 邮箱功能 ==========
+
+    @Override
+    public List<Document> getEmailsByType(String type) {
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
+        Long userId = UserContext.getUserId();
+
+        switch (type) {
+            case "INBOX":
+                wrapper.eq(Document::getMailboxType, "INBOX")
+                       .eq(Document::getDeleted, 0)
+                       .eq(Document::getSenderDeleted, 0);
+                break;
+            case "SENT":
+                wrapper.eq(Document::getMailboxType, "SENT")
+                       .eq(Document::getFromUserId, userId)
+                       .eq(Document::getDeleted, 0);
+                break;
+            case "DRAFT":
+                wrapper.eq(Document::getMailboxType, "DRAFT")
+                       .eq(Document::getFromUserId, userId)
+                       .eq(Document::getDeleted, 0);
+                break;
+            case "ARCHIVE":
+                wrapper.eq(Document::getMailboxType, "ARCHIVE")
+                       .eq(Document::getFromUserId, userId)
+                       .eq(Document::getDeleted, 0);
+                break;
+            case "TRASH":
+                wrapper.eq(Document::getDeleted, 1);
+                break;
+            default:
+                wrapper.eq(Document::getMailboxType, type);
         }
-        return result;
+        wrapper.orderByDesc(Document::getUpdatedAt);
+        return this.list(wrapper);
+    }
+
+    @Override
+    @Transactional
+    public void setPriority(Long id, Integer priority) {
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Document> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", id).set("priority", priority);
+        this.update(wrapper);
+    }
+
+    @Override
+    @Transactional
+    public void setStar(Long id, Integer starred) {
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Document> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", id).set("starred", starred);
+        this.update(wrapper);
+    }
+
+    @Override
+    @Transactional
+    public void setTags(Long id, String tags) {
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Document> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", id).set("tags", tags);
+        this.update(wrapper);
+    }
+
+    @Override
+    @Transactional
+    public void markRead(Long id, Integer isRead) {
+        if (isRead == null) {
+            isRead = 1;
+        }
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Document> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", id).set("is_read", isRead);
+        this.update(wrapper);
+    }
+
+    @Override
+    @Transactional
+    public void sendEmail(Long id) {
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Document> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", id).set("mailbox_type", "SENT").set("is_read", 1);
+        this.update(wrapper);
+    }
+
+    @Override
+    public int getUnreadCount() {
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Document::getMailboxType, "INBOX")
+               .eq(Document::getDeleted, 0)
+               .eq(Document::getSenderDeleted, 0)
+               .eq(Document::getIsRead, 0);
+        return (int) this.count(wrapper);
+    }
+
+    @Override
+    @Transactional
+    public Document createEmail(Document document) {
+        if (document.getTitle() == null || document.getTitle().trim().isEmpty()) {
+            document.setTitle("无主题");
+        }
+        document.setFromUserId(UserContext.getUserId());
+        document.setFromUserName(UserContext.getUser() != null ? UserContext.getUser().getNickname() : null);
+        document.setDeleted(0);
+        document.setIsRead(1);
+        if (document.getPriority() == null) {
+            document.setPriority(2);
+        }
+        if (document.getStarred() == null) {
+            document.setStarred(0);
+        }
+        this.save(document);
+        return document;
     }
 }

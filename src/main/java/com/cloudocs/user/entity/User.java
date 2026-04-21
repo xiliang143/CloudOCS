@@ -15,11 +15,6 @@ public class User extends BaseEntity implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 所属租户ID
-     */
-    private Long tenantId;
-
-    /**
      * 用户名
      */
     private String username;
@@ -45,7 +40,7 @@ public class User extends BaseEntity implements Serializable {
     private String phone;
 
     /**
-     * 角色：1-租户管理员，2-编辑，3-查看者
+     * 角色：1-管理员，2-编辑，3-查看者
      */
     private Integer role;
 

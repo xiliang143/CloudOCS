@@ -28,10 +28,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // 公开路径 (认证由 JwtInterceptor 处理)
                 .antMatchers("/api/auth/**").permitAll()
-                .antMatchers("/api/tenants/**").permitAll()
                 .antMatchers("/api/share/**").permitAll()
                 .antMatchers("/api/document/**").permitAll()  // 文档接口由 JwtInterceptor 认证
+                .antMatchers("/api/folders/**").permitAll()   // 文件夹接口由 JwtInterceptor 认证
                 .antMatchers("/api/users/**").permitAll()     // 用户接口由 JwtInterceptor 认证
+                .antMatchers("/api/upload/**").permitAll()   // 上传接口公开
+                .antMatchers("/api/email/**").permitAll()   // 邮箱接口公开
+                .antMatchers("/api/ai/**").permitAll()       // AI接口公开
+                .antMatchers("/uploads/**").permitAll()       // 上传文件访问公开
                 .antMatchers("/doc.html").permitAll()
                 .antMatchers("/swagger-ui/**").permitAll()
                 .antMatchers("/v3/api-docs/**").permitAll()

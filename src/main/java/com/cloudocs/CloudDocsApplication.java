@@ -9,7 +9,6 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 
 @SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class})
 @EnableRedisRepositories
-@ComponentScan(basePackages = "com.cloudocs")
 @MapperScan("com.cloudocs.**.mapper")
 public class CloudDocsApplication {
 
